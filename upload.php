@@ -2,20 +2,23 @@
 include 'functions.php';
 $msg = '';
 if (isset($_FILES['image'], $_POST['title'], $_POST['description'])) {
-	$target_dir = 'images/';
-	$image_path = $target_dir . basename($_FILES['image']['name']);
-	if (!empty($_FILES['image']['tmp_name']) && getimagesize($_FILES['image']['tmp_name'])) {
-		if (file_exists($image_path)) {
-			$msg = 'Image already exists, please choose another or rename that image.';
-		} else if ($_FILES['image']['size'] > 500000) {
-			$msg = 'Image file size too large, please choose an image less than 500kb.';
-		} else {
-			move_uploaded_file($_FILES['image']['tmp_name'], $image_path);
+    $uuid = uniqid();
+    $filename= $_FILES["image"]['name'];
+    $tempname =$_FILES["image"]["tmp_name"];
+    $folder = "images/".$filename;
+    $filetype = strtolower(pathinfo($folder,PATHINFO_EXTENSION));
+    $unique_name ="images/{$uuid}.{$filetype}";
+    move_uploaded_file($tempname, $folder);
+    
+	if (!empty($_FILES['image']['tmp_name'])) {
+			rename($folder,$unique_name);
 			$pdo = pdo_connect_mysql();
 			$stmt = $pdo->prepare('INSERT INTO images (title, description, filepath, uploaded_date) VALUES (?, ?, ?, CURRENT_TIMESTAMP)');
-	        $stmt->execute([ $_POST['title'], $_POST['description'], $image_path ]);
-			$msg = 'Image uploaded successfully!';
-		}
+	        $stmt->execute([ $_POST['title'], $_POST['description'], $unique_name ]);
+            move_uploaded_file($tempname,$folder);
+            $msg = 'Image uploaded successfully! You will be redirected in 3 seconds';
+            sleep(3);
+            header('location: index.php');
 	} else {
 		$msg = 'Please upload an image!';
 	}
@@ -30,9 +33,9 @@ if (isset($_FILES['image'], $_POST['title'], $_POST['description'])) {
 		<label for="image">Choose file</label>
 		<input type="file" name="image" accept="image/*" id="image">
 		<label for="title">Title</label>
-		<input type="text" name="title" id="title">
+		<input type="text" name="title" id="title" required>
 		<label for="description">Description</label>
-		<textarea name="description" id="description"></textarea>
+		<textarea name="description" id="description" required></textarea>
 	    <input type="submit" value="Upload Image" name="submit">
 	</form>
 	<p><?=$msg?></p>
